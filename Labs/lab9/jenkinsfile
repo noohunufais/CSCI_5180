@@ -1,0 +1,68 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Update/Install packages') {
+            steps {
+                script {
+                    sh 'pip install ncclient pandas ipaddress netaddr prettytable pylint'
+                }
+            }
+        }
+        
+        stage('Checking and fixing violations') {
+            steps {
+                script {
+                    def pylingOutput = sh(
+                        script: 'pylint netman_netconf_obj2.py || exit 0', 
+                        returnStdout: true
+                    ).trim()
+                    
+                    def qualityOfCode = pylingOutput.split('\n')[-1].split('/')[0].split()[-1]
+                    
+                    qualityOfCode = qualityOfCode.toFloat()
+                    
+                    echo "The quality of the code is ${qualityOfCode}/10"
+                    
+                    def qualityGate = 5.0
+                    
+                    if (qualityOfCode < qualityGate) {
+                        error 'Pylint reported violations against the PEP8 standard. Fix violations before proceeding.'
+                    }
+                }
+            }
+        }
+        
+        stage('Running the application') {
+            steps {
+                script {
+                    sh 'python3 netman_netconf_obj2.py'
+                }
+            }
+        }
+        
+        stage('Running Unit test') {
+            steps {
+                script {
+                    sh 'python3 testfile.py'
+                }
+            }
+        }
+    }
+    post {
+        success {
+            emailext(
+                to: 'noohnufais13@gmail.com',
+                subject: "Pipeline Successful: ${env.JOB_NAME}",
+                body: "The pipeline was successful."
+            )
+        }
+        failure {
+            emailext(
+                to: 'noohnufais13@gmail.com',
+                subject: "Pipeline Failed: ${env.JOB_NAME}",
+                body: "The pipeline failed."
+            )
+        }
+    }
+}

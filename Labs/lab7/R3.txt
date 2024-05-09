@@ -1,0 +1,16 @@
+hostname R3
+
+interface fa0/0
+ ip address 198.51.100.3 255.255.255.0
+interface fa1/0
+ ip address 198.51.102.3 255.255.255.0
+interface loopback1
+ ip address 30.0.0.1 255.255.255.255
+
+router ospf 1
+  
+    network 198.51.100.3 0.0.0.255 area 0
+  
+    network 198.51.102.3 0.0.0.0 area 0
+  
+    network 30.0.0.1 0.0.0.255 area 0

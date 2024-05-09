@@ -1,0 +1,11 @@
+hostname {{ item.hostname }}
+
+{% for interface, config in item.items() if interface not in ['hostname', 'ospf_process_id', 'ospf_area'] %}
+interface {{ interface }}
+ ip address {{ config.ip }} {{ config.subnet_mask }}
+{% endfor %}
+
+router ospf {{ item.ospf_process_id }}
+{% for interface, config in item.items() if interface not in ['hostname', 'ospf_process_id', 'ospf_area'] %}  
+    network {{ config.ip }} {{ config.wildcard }} area {{ item.ospf_area }}
+{% endfor %}

@@ -1,0 +1,246 @@
+---
+- name: Install packages on Liverpool and Real Madrid machines 
+  hosts: hosts
+  tasks:
+    - name: Install packages
+      package:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - vsftpd
+        - apache2
+        - python3-pip
+        - expect
+
+- name: Create users and groups on Liverpool
+  hosts: liverpool
+  become: true
+
+  tasks:
+    - name: Create Attack group
+      group:
+        name: Attack
+        state: present
+
+    - name: Create Defense group
+      group:
+        name: Defense
+        state: present
+
+    - name: Create Captain group
+      group:
+        name: Captain
+        state: present
+    
+    - name: Create Harry Kewell user in Attack group
+      user:
+        name: hkewell
+        comment: Harry Kewell
+        groups: Attack
+        state: present
+        append: yes
+
+    - name: Create Michael Owen user in Attack group
+      user:
+        name: mowen
+        comment: Michael Owen
+        groups: Attack
+        state: present
+        append: yes
+
+    - name: Create Jamie Carragher user in Defense group
+      user:
+        name: jcarragher
+        comment: Jamie Carragher
+        groups: Defense
+        state: present
+        append: yes
+
+    - name: Create Daniel Agger user in Defense group
+      user:
+        name: dagger
+        comment: Daniel Agger
+        groups: Defense
+        state: present
+        append: yes
+
+    - name: Create Steven Gerrard user in Captain group and sudo group
+      user:
+        name: sgerrard
+        comment: Steven Gerrard 
+        groups: Captain,sudo
+        state: present
+        append: yes
+
+    - name: Create a directory for route table information
+      file:
+        path: "/Liverpool_Admin/Route_Info/"
+        state: directory
+        owner: sgerrard
+        group: Captain
+        mode: "0774"
+
+    - name: Create Captain_Details.txt file and store captain information
+      copy:
+        content: |
+          Full Name: Steven Gerrard
+          Nationality: Australia
+          Username: sgerrard
+        dest: "/Liverpool_Admin/Route_Info/Captain_Details.txt"
+        owner: sgerrard
+        group: Captain
+        mode: "0774"
+
+- name: Create users and groups on Realmadrid
+  hosts: realmadrid
+  become: true
+
+  tasks:
+    - name: Create Attack group
+      group:
+        name: Attack
+        state: present
+
+    - name: Create Defense group
+      group:
+        name: Defense
+        state: present
+
+    - name: Create Captain group
+      group:
+        name: Captain
+        state: present
+    
+    - name: Create Luis Figo user in Attack group
+      user:
+        name: lfigo
+        comment: Luis Figo
+        groups: Attack
+        state: present
+        append: yes
+
+    - name: Create Roberto Soldado user in Attack group
+      user:
+        name: rsoldado
+        comment: Roberto Soldado
+        groups: Attack
+        state: present
+        append: yes
+
+    - name: Create Roberto Carlos user in Defense group
+      user:
+        name: rcarlos
+        comment: Roberto Carlos
+        groups: Defense
+        state: present
+        append: yes
+
+    - name: Create Fabio Cannavaro user in Defense group
+      user:
+        name: fcannavaro
+        comment: Fabio Cannavaro
+        groups: Defense
+        state: present
+        append: yes
+
+    - name: Create Zinedine Zidane user in Captain group and sudo group
+      user:
+        name: zzidane
+        comment: Zinedine Zidane
+        groups: Captain,sudo
+        state: present
+        append: yes
+
+    - name: Create a directory for route table information
+      file:
+        path: "/Readmadrid_Admin/Route_Info/"
+        state: directory
+        owner: zzidane
+        group: Captain
+        mode: "0774"
+
+    - name: Create Captain_Details.txt file and store captain information
+      copy:
+        content: |
+          Full Name: Zinedine Zidane
+          Nationality: Africa
+          Username: zzidane
+        dest: "/Readmadrid_Admin/Route_Info/Captain_Details.txt"
+        owner: zzidane
+        group: Captain
+        mode: "0774"
+
+- name: Retrieve route table and top ten running processes
+  hosts: hosts
+  tasks:
+    - name: Execute command to retrieve route table
+      shell: netstat -rn > /tmp/route_table.txt
+
+    - name: Execute command to retrieve top ten processes by memory usage
+      shell: ps -eo pid,%mem --sort=-%mem | head -n 11 > /tmp/top_ten_processes.txt
+
+- name: Secure transfer of files using SCP
+  hosts: hosts
+  tasks:
+    - name: Secure copy files from managed hosts to Ansible server
+      expect:
+        command: scp /tmp/route_table.txt student@10.224.77.32:/home/student/{{ host_name }}_route_table.txt
+        responses:
+          "password": "{{ ansible_ssh_pass }}"
+          "yes/no": "yes"
+
+- name: Assemble authorized keys for Liverpool players
+  hosts: liverpool
+  become: true
+  tasks:
+    - name: Copy the keys file into a folder(/home/student/ssh_keys/)
+      shell: cat /home/{{ item }}/.ssh/id_rsa.pub > /home/student/ssh_keys/{{ item }}_id_rsa.txt
+      loop:
+        - mowen
+        - dagger
+        - sgerrard
+  
+    - name: Assemble authorized keys for Liverpool players
+      assemble:
+        src: "/home/student/ssh_keys"
+        dest: "/root/.ssh/Liverpool_authorizedKeys.txt"
+        delimiter: '\n'
+
+    - name: Copy Liverpool_authorizedKeys.txt to Ansible server
+      expect:
+        command: scp /root/.ssh/Liverpool_authorizedKeys.txt student@10.224.77.32:/home/student/
+        responses:
+          "password": "{{ ansible_ssh_pass }}"
+          "yes/no": "yes"
+
+- name: Assemble authorized keys for RealMadrid players
+  hosts: realmadrid
+  become: true
+  tasks:
+    - name: Copy the keys file into a folder(/home/student/ssh_keys/)
+      shell: cat /home/{{ item }}/.ssh/id_rsa.pub > /home/student/ssh_keys/{{ item }}_id_rsa.txt
+      loop:
+        - lfigo
+        - fcannavaro
+        - zzidane
+
+    - name: Assemble authorized keys for realmadrid players
+      assemble:
+        src: "/home/student/ssh_keys"
+        dest: "/root/.ssh/RealMadrid_authorizedKeys.txt"
+        delimiter: '\n'
+
+    - name: Copy RealMadrid_authorizedKeys.txt to Ansible server
+      expect:
+        command: scp /root/.ssh/RealMadrid_authorizedKeys.txt student@10.224.77.32:/home/student/
+        responses:
+          "password": "{{ ansible_ssh_pass }}"
+          "yes/no": "yes"
+
+- name: Append to the appropriate file
+  hosts: localhost
+  become: true
+  tasks:
+    - name: Append to the appropriate file
+      shell: cat /home/student/Liverpool_authorizedKeys.txt /home/student/RealMadrid_authorizedKeys.txt >> /root/.ssh/id_rsa.pub 
+      
